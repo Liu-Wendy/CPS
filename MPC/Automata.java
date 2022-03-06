@@ -366,7 +366,7 @@ public class Automata {
         ArrayList<Instance> feasibleResult = new ArrayList<>();
         double feasibleResultAllTime = 0;
         boolean pruning = true;
-        for (int i = 0; i < repeat; i++) {
+        /*for (int i = 0; i < repeat; i++) {
             double currentT = System.currentTimeMillis();
             Continue con = new Continue(t, automata);
             con.setMaxIteration(iteration);
@@ -427,6 +427,7 @@ public class Automata {
         }
         println("Average time : " + Double.toString(feasibleResultAllTime / feasibleResult.size()));
         System.out.println("Average time : " + Double.toString(feasibleResultAllTime / feasibleResult.size()));
+        */
         return pruning;
     }
 

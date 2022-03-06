@@ -30,7 +30,7 @@ public class Continue extends BaseParameters{
 	private Model model;
 	private RandomOperator ro;
 
-	private Automata automata;
+	private ArrayList<Automata> automatas;
 	
 	
 	private class Model{                 //the model of generating next instance
@@ -64,12 +64,12 @@ public class Continue extends BaseParameters{
 	 * 
 	 * @param ta  the class which implements interface Task
 	 */
-	public Continue(Task ta, Automata automata){
+	public Continue(Task ta, ArrayList<Automata> automatas){
 		task = ta;
 		dimension = ta.getDim();
 		ro = new RandomOperator();
 		this.on_off = false; 		//set batch-racos
-		this.automata = automata;
+		this.automatas = automatas;
 	}
 	
 	//the next several functions are prepared for testing
@@ -143,7 +143,15 @@ public class Continue extends BaseParameters{
 	 */
 	protected Instance RandomInstance(){
 		Instance ins = new Instance(dimension);
-		while(true) {
+		for (int i = 0; i < dimension.getSize(); i++) {
+
+			if (dimension.getType(i)) {//if i-th dimension type is continue
+				ins.setFeature(i, ro.getDouble(dimension.getRegion(i)[0], dimension.getRegion(i)[1]));
+			} else {//if i-th dimension type is discrete
+				ins.setFeature(i, ro.getInteger((int) dimension.getRegion(i)[0], (int) dimension.getRegion(i)[1]));
+			}
+		}
+		/*while(true) {
 			for (int i = 0; i < dimension.getSize(); i++) {
 
 				if (dimension.getType(i)) {//if i-th dimension type is continue
@@ -156,9 +164,9 @@ public class Continue extends BaseParameters{
 			for(int j = 0;j < ((ObjectFunction)task).getPathLength();++j){
 				sum += ins.getFeature(j);
 			}
-			if(sum <= automata.cycle/automata.delta)
+			if(sum <= automatas.get(0).cycle/automatas.get(0).delta)
 				break;
-		}
+		}*/
 		return ins;
 	}
 	
@@ -207,7 +215,7 @@ public class Continue extends BaseParameters{
 			for(int j = 0;j < ((ObjectFunction)task).getPathLength();++j){
 				sum += ins.getFeature(j);
 			}
-			if(sum <= automata.cycle/automata.delta)
+			if(sum <= automatas.get(0).cycle/automatas.get(0).delta)
 				break;
 		}
 		return ins;
@@ -239,7 +247,7 @@ public class Continue extends BaseParameters{
 		
 		//initialize Optimal
 		Optimal = temp[0].CopyInstance();
-		
+
 		//after sorting, the beginning several instances in temp are used for initializing PosPop
 		PosPop = new Instance[PositiveNum];
 		for(int i=0; i<PositiveNum; i++){
@@ -337,7 +345,6 @@ public class Continue extends BaseParameters{
 	/**
 	 * make sure that the number of random dimension is smaller than the threshold UncertainBits
 	 * 
-	 * @param model
 	 * @return
 	 */
 	protected void setRandomBits(){
@@ -362,7 +369,6 @@ public class Continue extends BaseParameters{
 	/**
 	 * if each instance in Pop is not in model, return true; if exist more than one instance in Pop is in the model, return false
 	 * 
-	 * @param model
 	 * @return true or false
 	 */
 	protected boolean Distinguish(){

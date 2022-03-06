@@ -1,6 +1,12 @@
 package MPC;
 
 import MPC.tools.Fel_ExpressionProc;
+import Racos.Componet.Instance;
+import Racos.Method.Continue;
+import Racos.ObjectiveFunction.Mission;
+import Racos.ObjectiveFunction.ObjectFunction;
+import Racos.ObjectiveFunction.Task;
+import Racos.Tools.ValueArc;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -251,6 +257,39 @@ public class Model {
             automatas.get(i).checkAutomata();
         }
     }
+    boolean runRacos() {
+        int samplesize = 1;       // parameter: the number of samples in each iteration
+        int iteration = 50;       // parameter: the number of iterations for batch racos
+        int budget = 2000;         // parameter: the budget of sampling for sequential racos
+        int positivenum = 1;       // parameter: the number of positive instances in each iteration
+        double probability = 0.95; // parameter: the probability of sampling from the model
+        int uncertainbit = 1;      // parameter: the number of sampled dimensions
+        Instance ins = null;
+        int repeat = 1;
+        int[] path=new int[]{1,2,3};
+        Task t = new Mission(automatas,path);
+        ArrayList<Instance> result = new ArrayList<>();
+        ArrayList<Instance> feasibleResult = new ArrayList<>();
+        double feasibleResultAllTime = 0;
+        boolean pruning = true;
+        for (int i = 0; i < repeat; i++) {
+            double currentT = System.currentTimeMillis();
+            Continue con=new Continue(t, automatas);
+            con.setMaxIteration(iteration);
+            con.setSampleSize(samplesize);      // parameter: the number of samples in each iteration
+            con.setBudget(budget);              // parameter: the budget of sampling
+            con.setPositiveNum(positivenum);    // parameter: the number of positive instances in each iteration
+            con.setRandProbability(probability);// parameter: the probability of sampling from the model
+            con.setUncertainBits(uncertainbit); // parameter: the number of samplable dimensions
+            ValueArc valueArc = con.run();                          // call sequential Racos              // call Racos
+//            ValueArc valueArc = con.RRT();                          // call sequential Racos              // call Racos
+//            ValueArc valueArc = con.monte();                          // call sequential Racos              // call Racos
+//            ValueArc valueArc = con.run2();
+            double currentT2 = System.currentTimeMillis();
+        }
+        return pruning;
+
+    }
 
     public static void main(String[] args) {
         configUtil config = new configUtil();
@@ -266,8 +305,7 @@ public class Model {
             model.bufferedWriter= new BufferedWriter(new FileWriter(model.output));
             model.checkAutomata();
             model.bufferedWriter.close();
-            int maxPathSize = Integer.parseInt(config.get("bound"));
-
+            model.runRacos();
             File file = new File("result.txt");
             BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file));
 
