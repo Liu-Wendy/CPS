@@ -16,6 +16,7 @@ import java.util.Map;
 public class Model {
     public String forbiddenConstraints;
     public ArrayList<Automata> automatas;
+    public ArrayList<String> commands;
     File output;
     BufferedWriter bufferedWriter;
 
@@ -23,6 +24,77 @@ public class Model {
     public Model(String modelFileName, String cfgFileName){
         processModelFile(modelFileName);
         processCFGFile(cfgFileName);
+    }
+    public Model(ArrayList<String> commands,int matanum){
+        this.commands=commands;
+        automatas=new ArrayList<>();
+        for(int i = 0; i < matanum ; i++) {
+            Automata temp=new Automata();
+            temp.parameters = new ArrayList<>();
+            temp.locations = new HashMap<>();
+            temp.transitions = new ArrayList<>();
+            temp.initParameterValues=new HashMap<>();
+            for(int j=0;j<6;j++){
+                temp.parameters.add(j,"theta"+Integer.toString(j+1));
+                temp.parameters.add(j,"omega"+Integer.toString(j+1));
+                temp.initParameterValues.put("theta"+Integer.toString(j+1),0.0);
+                temp.initParameterValues.put("omega"+Integer.toString(j+1),0.0);
+            }
+            for(int j=0;j<3;j++){
+                temp.initParameterValues.put("X"+Integer.toString(j),0.0);
+                temp.initParameterValues.put("R"+Integer.toString(j),0.0);
+            }
+            temp.parameters.add("t_current");
+            temp.initParameterValues.put("t_current",0.0);
+            int locNum=0;
+            int lastLocNum=-1;
+            for (int j = 0; j < commands.size(); j++) {
+                String command = commands.get(j);
+
+                if (command.contains("fast")) {
+                    //set locations
+                    for(int k=0;k<3;k++) {
+                        locNum++;
+                        Location location = new Location(locNum, "fast_period"+Integer.toString(k+1));
+                        temp.locations.put(location.getNo(),location);
+                        //set transition
+                        if(lastLocNum!=-1){
+                            Transition transition = new Transition(lastLocNum, locNum);
+                            temp.locations.get(lastLocNum).addNeibour(locNum);
+                            temp.transitions.add(transition);
+                        }
+                        lastLocNum=locNum;
+                    }
+
+
+                }else if(command.contains("forward")){
+                    for(int k=0;k<3;k++) {
+                        locNum++;
+                        Location location = new Location(locNum, "forward_period"+Integer.toString(k+1));
+                        temp.locations.put(location.getNo(),location);
+                        if(lastLocNum!=-1){
+                            Transition transition = new Transition(lastLocNum, locNum);
+                            temp.locations.get(lastLocNum).addNeibour(locNum);
+                            temp.transitions.add(transition);
+                        }
+                        lastLocNum=locNum;
+                    }
+                }else{
+                    //todo other modes
+                }
+            }
+            automatas.add(temp);
+        }
+
+        //String tmp="(-24.28*sin(a1.theta1)*sin(a1.theta4)*sin(a1.theta5)+cos(a1.theta1)*(29.69+cos(a1.theta3)*(-168.98-24.28*cos(a1.theta5))*sin(a1.theta2)-20.0*sin(a1.theta2)*sin(a1.theta3)+24.28*cos(a1.theta4)*sin(a1.theta2)*sin(a1.theta3)*sin(a1.theta5)+cos(a1.theta2)*(108.0+(-168.98-24.28*cos(a1.theta5))*sin(a1.theta3)+cos(a1.theta3)*(20.0-24.28*cos(a1.theta4)*sin(a1.theta5)))) - (-24.28*sin(a2.theta2)*sin(a2.theta4)*sin(a2.theta5)+cos(a2.theta2)*(29.69+cos(a2.theta3)*(-168.98-24.28*cos(a2.theta5))*sin(a2.theta2)-20.0*sin(a2.theta2)*sin(a2.theta3)+24.28*cos(a2.theta4)*sin(a2.theta2)*sin(a2.theta3)*sin(a2.theta5)+cos(a2.theta2)*(108.0+(-168.98-24.28*cos(a2.theta5))*sin(a2.theta3)+cos(a2.theta3)*(20.0-24.28*cos(a2.theta4)*sin(a2.theta5))))))*(-24.28*sin(a1.theta1)*sin(a1.theta4)*sin(a1.theta5)+cos(a1.theta1)*(29.69+cos(a1.theta3)*(-168.98-24.28*cos(a1.theta5))*sin(a1.theta2)-20.0*sin(a1.theta2)*sin(a1.theta3)+24.28*cos(a1.theta4)*sin(a1.theta2)*sin(a1.theta3)*sin(a1.theta5)+cos(a1.theta2)*(108.0+(-168.98-24.28*cos(a1.theta5))*sin(a1.theta3)+cos(a1.theta3)*(20.0-24.28*cos(a1.theta4)*sin(a1.theta5)))) - (-24.28*sin(a2.theta2)*sin(a2.theta4)*sin(a2.theta5)+cos(a2.theta2)*(29.69+cos(a2.theta3)*(-168.98-24.28*cos(a2.theta5))*sin(a2.theta2)-20.0*sin(a2.theta2)*sin(a2.theta3)+24.28*cos(a2.theta4)*sin(a2.theta2)*sin(a2.theta3)*sin(a2.theta5)+cos(a2.theta2)*(108.0+(-168.98-24.28*cos(a2.theta5))*sin(a2.theta3)+cos(a2.theta3)*(20.0-24.28*cos(a2.theta4)*sin(a2.theta5))))))+(24.28*cos(a1.theta1)*sin(a1.theta4)*sin(a1.theta5)+sin(a1.theta1)*(29.69+cos(a1.theta3)*(-168.98-24.28*cos(a1.theta5))*sin(a1.theta2)-20.0*sin(a1.theta2)*sin(a1.theta3)+24.28*cos(a1.theta4)*sin(a1.theta2)*sin(a1.theta3)*sin(a1.theta5)+cos(a1.theta2)*(108.0+(-168.98-24.28*cos(a1.theta5))*sin(a1.theta3)+cos(a1.theta3)*(20.0-24.28*cos(a1.theta4)*sin(a1.theta5))))- (24.28*cos(a2.theta2)*sin(a2.theta4)*sin(a2.theta5)+sin(a2.theta2)*(29.69+cos(a2.theta3)*(-168.98-24.28*cos(a2.theta5))*sin(a2.theta2)-20.0*sin(a2.theta2)*sin(a2.theta3)+24.28*cos(a2.theta4)*sin(a2.theta2)*sin(a2.theta3)*sin(a2.theta5)+cos(a2.theta2)*(108.0+(-168.98-24.28*cos(a2.theta5))*sin(a2.theta3)+cos(a2.theta3)*(20.0-24.28*cos(a2.theta4)*sin(a2.theta5)))))-414)*(24.28*cos(a1.theta1)*sin(a1.theta4)*sin(a1.theta5)+sin(a1.theta1)*(29.69+cos(a1.theta3)*(-168.98-24.28*cos(a1.theta5))*sin(a1.theta2)-20.0*sin(a1.theta2)*sin(a1.theta3)+24.28*cos(a1.theta4)*sin(a1.theta2)*sin(a1.theta3)*sin(a1.theta5)+cos(a1.theta2)*(108.0+(-168.98-24.28*cos(a1.theta5))*sin(a1.theta3)+cos(a1.theta3)*(20.0-24.28*cos(a1.theta4)*sin(a1.theta5))))-(24.28*cos(a2.theta2)*sin(a2.theta4)*sin(a2.theta5)+sin(a2.theta2)*(29.69+cos(a2.theta3)*(-168.98-24.28*cos(a2.theta5))*sin(a2.theta2)-20.0*sin(a2.theta2)*sin(a2.theta3)+24.28*cos(a2.theta4)*sin(a2.theta2)*sin(a2.theta3)*sin(a2.theta5)+cos(a2.theta2)*(108.0+(-168.98-24.28*cos(a2.theta5))*sin(a2.theta3)+cos(a2.theta3)*(20.0-24.28*cos(a2.theta4)*sin(a2.theta5)))))-414)+(127.0+sin(a1.theta2)*(-108.0+(168.98+24.28*cos(a1.theta5))*sin(a1.theta3)+cos(a1.theta3)*(-20.0+24.28*cos(a1.theta4)*sin(a1.theta5)))+cos(a1.theta2)*(cos(a1.theta3)*(-168.98-24.28*cos(a1.theta5))+sin(a1.theta3)*(-20.0+24.28*cos(a1.theta4)*sin(a1.theta5))) - (127.0+sin(a2.theta2)*(-108.0+(168.98+24.28*cos(a2.theta5))*sin(a2.theta3)+cos(a2.theta3)*(-20.0+24.28*cos(a2.theta4)*sin(a2.theta5)))+cos(a2.theta2)*(cos(a2.theta3)*(-168.98-24.28*cos(a2.theta5))+sin(a2.theta3)*(-20.0+24.28*cos(a2.theta4)*sin(a2.theta5)))))*(127.0+sin(a1.theta2)*(-108.0+(168.98+24.28*cos(a1.theta5))*sin(a1.theta3)+cos(a1.theta3)*(-20.0+24.28*cos(a1.theta4)*sin(a1.theta5)))+cos(a1.theta2)*(cos(a1.theta3)*(-168.98-24.28*cos(a1.theta5))+sin(a1.theta3)*(-20.0+24.28*cos(a1.theta4)*sin(a1.theta5))) - (127.0+sin(a2.theta2)*(-108.0+(168.98+24.28*cos(a2.theta5))*sin(a2.theta3)+cos(a2.theta3)*(-20.0+24.28*cos(a2.theta4)*sin(a2.theta5)))+cos(a2.theta2)*(cos(a2.theta3)*(-168.98-24.28*cos(a2.theta5))+sin(a2.theta3)*(-20.0+24.28*cos(a2.theta4)*sin(a2.theta5)))))<5184";
+        String tmp="(-24.28*sin(a1_theta1)*sin(a1_theta4)*sin(a1_theta5)+cos(a1_theta1)*(29.69+cos(a1_theta3)*(-168.98-24.28*cos(a1_theta5))*sin(a1_theta2)-20.0*sin(a1_theta2)*sin(a1_theta3)+24.28*cos(a1_theta4)*sin(a1_theta2)*sin(a1_theta3)*sin(a1_theta5)+cos(a1_theta2)*(108.0+(-168.98-24.28*cos(a1_theta5))*sin(a1_theta3)+cos(a1_theta3)*(20.0-24.28*cos(a1_theta4)*sin(a1_theta5)))) - (-24.28*sin(a2_theta2)*sin(a2_theta4)*sin(a2_theta5)+cos(a2_theta2)*(29.69+cos(a2_theta3)*(-168.98-24.28*cos(a2_theta5))*sin(a2_theta2)-20.0*sin(a2_theta2)*sin(a2_theta3)+24.28*cos(a2_theta4)*sin(a2_theta2)*sin(a2_theta3)*sin(a2_theta5)+cos(a2_theta2)*(108.0+(-168.98-24.28*cos(a2_theta5))*sin(a2_theta3)+cos(a2_theta3)*(20.0-24.28*cos(a2_theta4)*sin(a2_theta5))))))*(-24.28*sin(a1_theta1)*sin(a1_theta4)*sin(a1_theta5)+cos(a1_theta1)*(29.69+cos(a1_theta3)*(-168.98-24.28*cos(a1_theta5))*sin(a1_theta2)-20.0*sin(a1_theta2)*sin(a1_theta3)+24.28*cos(a1_theta4)*sin(a1_theta2)*sin(a1_theta3)*sin(a1_theta5)+cos(a1_theta2)*(108.0+(-168.98-24.28*cos(a1_theta5))*sin(a1_theta3)+cos(a1_theta3)*(20.0-24.28*cos(a1_theta4)*sin(a1_theta5)))) - (-24.28*sin(a2_theta2)*sin(a2_theta4)*sin(a2_theta5)+cos(a2_theta2)*(29.69+cos(a2_theta3)*(-168.98-24.28*cos(a2_theta5))*sin(a2_theta2)-20.0*sin(a2_theta2)*sin(a2_theta3)+24.28*cos(a2_theta4)*sin(a2_theta2)*sin(a2_theta3)*sin(a2_theta5)+cos(a2_theta2)*(108.0+(-168.98-24.28*cos(a2_theta5))*sin(a2_theta3)+cos(a2_theta3)*(20.0-24.28*cos(a2_theta4)*sin(a2_theta5))))))+(24.28*cos(a1_theta1)*sin(a1_theta4)*sin(a1_theta5)+sin(a1_theta1)*(29.69+cos(a1_theta3)*(-168.98-24.28*cos(a1_theta5))*sin(a1_theta2)-20.0*sin(a1_theta2)*sin(a1_theta3)+24.28*cos(a1_theta4)*sin(a1_theta2)*sin(a1_theta3)*sin(a1_theta5)+cos(a1_theta2)*(108.0+(-168.98-24.28*cos(a1_theta5))*sin(a1_theta3)+cos(a1_theta3)*(20.0-24.28*cos(a1_theta4)*sin(a1_theta5))))- (24.28*cos(a2_theta2)*sin(a2_theta4)*sin(a2_theta5)+sin(a2_theta2)*(29.69+cos(a2_theta3)*(-168.98-24.28*cos(a2_theta5))*sin(a2_theta2)-20.0*sin(a2_theta2)*sin(a2_theta3)+24.28*cos(a2_theta4)*sin(a2_theta2)*sin(a2_theta3)*sin(a2_theta5)+cos(a2_theta2)*(108.0+(-168.98-24.28*cos(a2_theta5))*sin(a2_theta3)+cos(a2_theta3)*(20.0-24.28*cos(a2_theta4)*sin(a2_theta5)))))-414)*(24.28*cos(a1_theta1)*sin(a1_theta4)*sin(a1_theta5)+sin(a1_theta1)*(29.69+cos(a1_theta3)*(-168.98-24.28*cos(a1_theta5))*sin(a1_theta2)-20.0*sin(a1_theta2)*sin(a1_theta3)+24.28*cos(a1_theta4)*sin(a1_theta2)*sin(a1_theta3)*sin(a1_theta5)+cos(a1_theta2)*(108.0+(-168.98-24.28*cos(a1_theta5))*sin(a1_theta3)+cos(a1_theta3)*(20.0-24.28*cos(a1_theta4)*sin(a1_theta5))))-(24.28*cos(a2_theta2)*sin(a2_theta4)*sin(a2_theta5)+sin(a2_theta2)*(29.69+cos(a2_theta3)*(-168.98-24.28*cos(a2_theta5))*sin(a2_theta2)-20.0*sin(a2_theta2)*sin(a2_theta3)+24.28*cos(a2_theta4)*sin(a2_theta2)*sin(a2_theta3)*sin(a2_theta5)+cos(a2_theta2)*(108.0+(-168.98-24.28*cos(a2_theta5))*sin(a2_theta3)+cos(a2_theta3)*(20.0-24.28*cos(a2_theta4)*sin(a2_theta5)))))-414)+(127.0+sin(a1_theta2)*(-108.0+(168.98+24.28*cos(a1_theta5))*sin(a1_theta3)+cos(a1_theta3)*(-20.0+24.28*cos(a1_theta4)*sin(a1_theta5)))+cos(a1_theta2)*(cos(a1_theta3)*(-168.98-24.28*cos(a1_theta5))+sin(a1_theta3)*(-20.0+24.28*cos(a1_theta4)*sin(a1_theta5))) - (127.0+sin(a2_theta2)*(-108.0+(168.98+24.28*cos(a2_theta5))*sin(a2_theta3)+cos(a2_theta3)*(-20.0+24.28*cos(a2_theta4)*sin(a2_theta5)))+cos(a2_theta2)*(cos(a2_theta3)*(-168.98-24.28*cos(a2_theta5))+sin(a2_theta3)*(-20.0+24.28*cos(a2_theta4)*sin(a2_theta5)))))*(127.0+sin(a1_theta2)*(-108.0+(168.98+24.28*cos(a1_theta5))*sin(a1_theta3)+cos(a1_theta3)*(-20.0+24.28*cos(a1_theta4)*sin(a1_theta5)))+cos(a1_theta2)*(cos(a1_theta3)*(-168.98-24.28*cos(a1_theta5))+sin(a1_theta3)*(-20.0+24.28*cos(a1_theta4)*sin(a1_theta5))) - (127.0+sin(a2_theta2)*(-108.0+(168.98+24.28*cos(a2_theta5))*sin(a2_theta3)+cos(a2_theta3)*(-20.0+24.28*cos(a2_theta4)*sin(a2_theta5)))+cos(a2_theta2)*(cos(a2_theta3)*(-168.98-24.28*cos(a2_theta5))+sin(a2_theta3)*(-20.0+24.28*cos(a2_theta4)*sin(a2_theta5)))))<5184";
+        tmp = tmp.replace("pow", "$(Math).pow");
+        tmp = tmp.replace("sin", "$(Math).sin");
+        tmp = tmp.replace("cos", "$(Math).cos");
+        tmp = tmp.replace("tan", "$(Math).tan");
+        tmp = tmp.replace("sqrt", "$(Math).sqrt");
+        automatas.get(0).forbiddenConstraints=tmp;
+        automatas.get(1).forbiddenConstraints=tmp;
     }
 
     void processModelFile(String modelFileName) {
@@ -266,8 +338,8 @@ public class Model {
         int uncertainbit = 1;      // parameter: the number of sampled dimensions
         Instance ins = null;
         int repeat = 1;
-        int[] path=new int[]{1,2,3};
-        Task t = new Mission(automatas,path);
+        int[] path=new int[]{1,2,3,4,5,6};
+        Task t = new Mission(commands,automatas);
         ArrayList<Instance> result = new ArrayList<>();
         ArrayList<Instance> feasibleResult = new ArrayList<>();
         double feasibleResultAllTime = 0;
@@ -292,7 +364,13 @@ public class Model {
     }
 
     public static void main(String[] args) {
-        configUtil config = new configUtil();
+        ArrayList<String> commands=new ArrayList<>();
+        commands.add(0,"fast");
+        //commands.add(1,"forward");
+        Model model=new Model(commands,2);
+        model.runRacos();
+
+        /*configUtil config = new configUtil();
         String prefix = new String("models/" + config.get("system") + "_" + config.get("mission"));
         String modelFile = prefix + ".xml";
         String cfgFile = prefix + ".cfg";
@@ -315,7 +393,7 @@ public class Model {
 
         double endTime = System.currentTimeMillis();
         System.out.println("Time cost :" + (endTime - currentTime) / 1000 + " seconds");
-
+*/
 
     }
 }

@@ -11,6 +11,7 @@ public class InverseSolution {
     double[] tool_offset ;
     int NOSOLUTION;
     double[] theta_speed_max;
+    double[] a_max;
 
     public InverseSolution(){
         PI=3.1415926;
@@ -23,6 +24,7 @@ public class InverseSolution {
         tool_offset = new double[]{10,0,1};
         NOSOLUTION = 1000;
         theta_speed_max = new double[]{50.0,50.0,50.0,250.0/3.0,250.0/3.0,250.0/3.0};// deg/s
+        a_max=new double[]{500,500,500,500,500,500};// deg/s^2
     }
 
     public double[][] MatrixMult(double[][] m1,double[][]m2){
@@ -186,4 +188,23 @@ public class InverseSolution {
         }
         return omega_bar;
     }
+    public double[] Solve_T12(double[] theta_tar, double[] current_theta){
+        //t12[0]=tmax,t12[1]=t2
+        double[] t12= new double[2];
+        double[] delta_theta=new double[6];
+        double[] t_min=new double[6];
+        for(int i=0;i<6;i++){
+            delta_theta[i]=theta_tar[i]-current_theta[i];
+            t_min[i]=delta_theta[i]/theta_speed_max[i]+theta_speed_max[i]/a_max[i];
+        }
+        double T=0;//second
+        for(int i=0;i<6;i++){
+            T=t_min[i]>T?t_min[i]:T;
+        }
+        t12[0]=T;
+        t12[1]=Math.sqrt((Math.pow(T,2)-4*delta_theta[0]/a_max[0]));
+        //todo choose which t
+        return t12;
+    }
+
 }
