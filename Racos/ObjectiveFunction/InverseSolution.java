@@ -11,8 +11,12 @@ public class InverseSolution {
     double[] tool_offset ;
     int NOSOLUTION;
     double[] theta_speed_max;
-    double[] a_max;
-
+    double[] a_max_fast;
+    double[] w_fast;
+    double[] a_fast;
+    double a_max_forward;
+    double[] v_forward;
+    double[] a_forward;
     public InverseSolution(){
         PI=3.1415926;
         D1=127.000;
@@ -24,7 +28,12 @@ public class InverseSolution {
         tool_offset = new double[]{10,0,1};
         NOSOLUTION = 1000;
         theta_speed_max = new double[]{50.0,50.0,50.0,250.0/3.0,250.0/3.0,250.0/3.0};// deg/s
-        a_max=new double[]{500,500,500,500,500,500};// deg/s^2
+        a_max_fast=new double[]{500,500,500,500,500,500};// deg/s^2
+        a_max_forward=20;//mm/s
+        a_fast=new double[6];
+        w_fast=new double[6];
+        v_forward=new double[3];
+        a_forward=new double[3];
     }
 
     public double[][] MatrixMult(double[][] m1,double[][]m2){
@@ -117,7 +126,7 @@ public class InverseSolution {
             theta33 = -(zeta1 + ATAN2D4_A3);
         } else {
             //theta33 = NOSOLUTION;
-            System.out.print("error: theta33 has no solution!");
+            //System.out.print("error: theta33 has no solution!\n");
             for(int i=0;i<6;i++){THETA_target[i]=NOSOLUTION;}
             return THETA_target;
         }
@@ -188,23 +197,73 @@ public class InverseSolution {
         }
         return omega_bar;
     }
-    public double[] Solve_T12(double[] theta_tar, double[] current_theta){
-        //t12[0]=tmax,t12[1]=t2
+    public double[] Solve_T12(double[] delta_theta){
+        double[] time=new double[3];
+        double maxt1=0,maxt2=0;
+        for(int i=0;i<6;i++){
+            double delta=Math.abs(delta_theta[i]);
+            double t1=theta_speed_max[i]/a_max_fast[i];
+            double t2=delta/theta_speed_max[i]-t1;
+            if(t2<0){
+                t2=0;
+                t1=Math.sqrt(delta/a_max_fast[i]);
+            }
+            double totaltime=2*t1+t2;
+            if(2*maxt1+maxt2<totaltime){
+                maxt1=t1;
+                maxt2=t2;
+            }
+        }
+        for(int i=0;i<6;i++){
+            a_fast[i]=delta_theta[i]/(maxt1*maxt1+maxt1*maxt2);
+            w_fast[i]=a_fast[i]*maxt1;
+        }
+
+        time[0]=maxt1;
+        time[1]=maxt1+maxt2;
+        time[2]=2*maxt1+maxt2;
+        return time;
+
+       /* //t12[0]=tmax,t12[1]=t2
         double[] t12= new double[2];
-        double[] delta_theta=new double[6];
+        double[] t_res=new double[3];
         double[] t_min=new double[6];
         for(int i=0;i<6;i++){
-            delta_theta[i]=theta_tar[i]-current_theta[i];
-            t_min[i]=delta_theta[i]/theta_speed_max[i]+theta_speed_max[i]/a_max[i];
+            t_min[i]=(Math.abs(delta_theta[i])/theta_speed_max[i]-theta_speed_max[i]/a_max_fast[i]);
+            if(t_min[i]<0) t_min[i]=0;
         }
         double T=0;//second
         for(int i=0;i<6;i++){
             T=t_min[i]>T?t_min[i]:T;
         }
-        t12[0]=T;
-        t12[1]=Math.sqrt((Math.pow(T,2)-4*delta_theta[0]/a_max[0]));
-        //todo choose which t
-        return t12;
+        double t=Math.sqrt((Math.pow(T,2)-4*delta_theta[0]/a_max_fast[0]));
+        t12[0]=Math.max(T,t);
+        t12[1]=Math.min(T,t);
+
+        t_res[0]=(t12[0]-t12[1])/2;
+        t_res[1]=t12[1]+t_res[0];
+        t_res[2]=t_res[1]+t_res[0];
+
+        return t_res;*/
+    }
+    public double[] Solve_T12_forward(double[] delta_X,double V_tar){
+        double[] time = new double[3];
+        double sum=Math.abs(delta_X[0])+Math.abs(delta_X[1])+Math.abs(delta_X[2]);
+        int max_index=0;
+        for(int i=0;i<3;i++){
+            v_forward[i]=(delta_X[i]/sum)*V_tar;
+            if(Math.abs(delta_X[max_index])<Math.abs(delta_X[i])) max_index=i;
+        }
+        if(delta_X[max_index]<0) a_forward[max_index]=-20;
+        else a_forward[max_index]=20;
+        for(int i=0;i<3;i++){
+            a_forward[i]=delta_X[i]/Math.abs(delta_X[max_index])*20;
+        }
+        time[0]=Math.abs(v_forward[0]/a_forward[0]);
+
+        time[1]=time[0]+Math.abs(delta_X[0]/v_forward[0]-time[0]);
+        time[2]=time[1]+time[0];
+        return time;
     }
 
 }

@@ -49,6 +49,7 @@ public class Ackley implements Task{
     this.opt = new double[opt.length];
     System.arraycopy(opt, 0, this.opt, 0, opt.length);
   }
+    public double getinsTime(){return 0;}
 
 	@Override
 	public double getValue(Instance ins) {

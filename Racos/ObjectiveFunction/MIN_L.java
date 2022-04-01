@@ -156,6 +156,7 @@ public class MIN_L implements Task{
     public Dimension getDim() {
         return dim;
     }
+    public double getinsTime(){return 0;}
 
     public double[] AC(double in[],double t){
         /*
@@ -195,7 +196,7 @@ public class MIN_L implements Task{
             for(int i = 0;i < v.length;++i)
                 this.arg[i] = v[i];
         }
-
+        public double getinsTime(){return 0;}
         @Override
         public double getValue(Instance ins) {
             double []v = new double[ins.getFeature().length];

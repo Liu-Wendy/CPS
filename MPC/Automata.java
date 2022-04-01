@@ -36,6 +36,7 @@ public class Automata {
     public String forbiddenConstraints;
     public double cycle;
     public String cycleConstraint;
+    public int currentlocIndex;
     File output;
     BufferedWriter bufferedWriter;
     public ArrayList<RangeParameter> rangeParameters;
@@ -52,6 +53,7 @@ public class Automata {
         forbiddenLoc = -1;
         initLocName = null;
         initLoc = -1;
+        currentlocIndex = -1;
         cycle = -1;
         target_x = target_y = -1;
         obj_function = null;
@@ -64,6 +66,7 @@ public class Automata {
         forbiddenLoc = -1;
         initLocName = null;
         initLoc = -1;
+        currentlocIndex = -1;
         cycle = -1;
         target_x = target_y = -1;
         obj_function = null;

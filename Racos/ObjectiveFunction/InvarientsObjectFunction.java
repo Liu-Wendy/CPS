@@ -83,4 +83,5 @@ public class InvarientsObjectFunction implements Task {
     public Dimension getDim() {
         return dim;
     }
+    public double getinsTime(){return 0;}
 }

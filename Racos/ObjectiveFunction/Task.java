@@ -36,4 +36,5 @@ public interface Task {
 	//for get dimension message for each task
 	public abstract Dimension getDim();
 
+	public abstract double getinsTime();
 }

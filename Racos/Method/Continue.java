@@ -151,22 +151,6 @@ public class Continue extends BaseParameters{
 				ins.setFeature(i, ro.getInteger((int) dimension.getRegion(i)[0], (int) dimension.getRegion(i)[1]));
 			}
 		}
-		/*while(true) {
-			for (int i = 0; i < dimension.getSize(); i++) {
-
-				if (dimension.getType(i)) {//if i-th dimension type is continue
-					ins.setFeature(i, ro.getDouble(dimension.getRegion(i)[0], dimension.getRegion(i)[1]));
-				} else {//if i-th dimension type is discrete
-					ins.setFeature(i, ro.getInteger((int) dimension.getRegion(i)[0], (int) dimension.getRegion(i)[1]));
-				}
-			}
-			double sum = 0;
-			for(int j = 0;j < ((ObjectFunction)task).getPathLength();++j){
-				sum += ins.getFeature(j);
-			}
-			if(sum <= automatas.get(0).cycle/automatas.get(0).delta)
-				break;
-		}*/
 		return ins;
 	}
 	
@@ -211,12 +195,12 @@ public class Continue extends BaseParameters{
 				}
 
 			}
-			double sum = 0;
+			/*double sum = 0;
 			for(int j = 0;j < ((ObjectFunction)task).getPathLength();++j){
 				sum += ins.getFeature(j);
 			}
-			if(sum <= automatas.get(0).cycle/automatas.get(0).delta)
-				break;
+			if(sum <= automatas.get(0).cycle/automatas.get(0).delta)*/
+			break;
 		}
 		return ins;
 	}
@@ -252,7 +236,7 @@ public class Continue extends BaseParameters{
 		PosPop = new Instance[PositiveNum];
 		for(int i=0; i<PositiveNum; i++){
 			PosPop[i] = temp[i];
-			((ObjectFunction)task).updateInstanceRegion(PosPop[i]);
+			//((ObjectFunction)task).updateInstanceRegion(PosPop[i]);
 		}
 		
 		Pop = new Instance[SampleSize];
@@ -445,7 +429,7 @@ public class Continue extends BaseParameters{
 				}
 			}
 			if(j<this.PositiveNum){
-				((ObjectFunction)task).updateInstanceRegion(Pop[i]);
+				//((Mission)task).updateInstanceRegion(Pop[i]);
 				TempIns=Pop[i];
 				Pop[i]=PosPop[this.PositiveNum-1];
 				for(int k=this.PositiveNum-1; k>j;k--){
@@ -502,7 +486,7 @@ public class Continue extends BaseParameters{
 		}
 		return ;
 	}
-	
+
 	/**
 	 * after setting parameters of Racos, user call this function can obtain optimal
 	 * 
@@ -527,12 +511,17 @@ public class Continue extends BaseParameters{
 		ArrayList<Double> arrayListBestValues = new ArrayList<>();
 		// batch Racos
 		if (!this.on_off){
-			double preBestValue = 0;
+			//double preBestValue = 0;
 			// for each loop
-			for(int i=1; i<this.MaxIteration; i++){
+			for(int i=1; i<MaxIteration; i++){
 				double bestValue = getOptimal().getValue();
+				System.out.println("i="+i+"  best Value="+bestValue);
+				if(bestValue<=0) {
+					System.out.println("current Iteration: "+i);
+					break;
+				}
 //				System.out.println(i + " " + bestValue);
-				if(bestValue < 0) {
+				/*if(bestValue < 0) {
 					arrayListBestValues.add(bestValue + 100000);
 //					break;
 				}
@@ -547,8 +536,8 @@ public class Continue extends BaseParameters{
 					else{
 						bestValueCount = 0;
 					}
-				}
-				preBestValue = bestValue;
+				}*/
+				//preBestValue = bestValue;
 				// for each sample in a loop
 				for(int j=0; j<this.SampleSize; j++){	
 					reSample = true;
@@ -605,7 +594,7 @@ public class Continue extends BaseParameters{
 
 			}
 		}
-		ObjectFunction of = (ObjectFunction)task;
+		Mission of = (Mission) task;
 		of.valueArc.iterativeNums = iterativeNums;
 		of.valueArc.arrayListBestValues = arrayListBestValues;
 		return of.valueArc;

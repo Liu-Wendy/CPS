@@ -218,5 +218,6 @@ public class NormalizedCut implements Task{
 		// TODO Auto-generated method stub
 		return dim;
 	}
+	public double getinsTime(){return 0;}
 
 }
