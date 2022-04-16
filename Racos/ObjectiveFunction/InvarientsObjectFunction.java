@@ -19,6 +19,7 @@ public class InvarientsObjectFunction implements Task {
     private FelContext ctx;
     private ArrayList<HashMap<String,Double>> allParametersValues;
     private double[] preArgs;
+    boolean log_flag=false;
 
     public InvarientsObjectFunction(Automata automata, int []path, double []args, ArrayList<HashMap<String,Double>> allParametersValues){
         this.automata = automata;
@@ -33,6 +34,9 @@ public class InvarientsObjectFunction implements Task {
         this.preArgs = args;
         fel = new FelEngineImpl();
         ctx = fel.getContext();
+    }
+    public  void setlogFlag(){
+        log_flag=true;
     }
 
     @Override
@@ -83,5 +87,7 @@ public class InvarientsObjectFunction implements Task {
     public Dimension getDim() {
         return dim;
     }
-    public double getinsTime(){return 0;}
+    public double[] getinsTime(){return new double[3];}
+    public double[] getsingleTime(){return new double[3];}
+    public int getstepnum(){return 0;}
 }

@@ -228,7 +228,8 @@ public class Continue extends BaseParameters{
 		//sort Pop according to objective function value
 		InstanceComparator comparator = new InstanceComparator();
 		java.util.Arrays.sort(temp,comparator);
-		
+		java.util.Arrays.sort(temp,comparator);
+
 		//initialize Optimal
 		Optimal = temp[0].CopyInstance();
 
@@ -517,7 +518,9 @@ public class Continue extends BaseParameters{
 				double bestValue = getOptimal().getValue();
 				System.out.println("i="+i+"  best Value="+bestValue);
 				if(bestValue<=0) {
-					System.out.println("current Iteration: "+i);
+					task.setlogFlag();
+					task.getValue(Optimal);
+					System.out.println("\ncurrent Iteration: "+i);
 					break;
 				}
 //				System.out.println(i + " " + bestValue);

@@ -185,6 +185,79 @@ public class InverseSolution {
 
         return  THETA_target;
     }
+    public double[] F_forward(double[] THETA){
+        double[] tool = new double[3];
+
+        THETA[1]=THETA[1]-90;
+        THETA[4]=THETA[4]+90;
+
+        double[] sinTemp=new double[6];
+        double[] cosTemp=new double[6];
+
+        for(int i=0;i<6;i++){
+            THETA[i]=Math.toRadians(THETA[i]);
+            sinTemp[i]=Math.sin(THETA[i]);
+            cosTemp[i]=Math.cos(THETA[i]);
+        }
+
+        double[][]T10= new double[][]{
+                {cosTemp[0],  -sinTemp[0],  0,  0},
+                {sinTemp[0],   cosTemp[0],  0,  0},
+                {0,            0,           1,  D1},
+                {0,            0,           0,  1}
+        };
+        double[][]T21= new double[][]{
+                {cosTemp[1],  -sinTemp[1],  0,  A1},
+                {0,           0,            1,  0},
+                {-sinTemp[1], -cosTemp[1],  0,  0},
+                {0,            0,           0,  1}
+        };
+        double[][]T32= new double[][]{
+                {cosTemp[2],  -sinTemp[2],  0,  A2},
+                {sinTemp[2],   cosTemp[2],  0,  0},
+                {0,            0,           1,  0},
+                {0,            0,           0,  1}
+        };
+        double[][]T43= new double[][]{
+                {cosTemp[3],  -sinTemp[3],  0,  A3},
+                {0,           0,            1,  D4},
+                {-sinTemp[3], -cosTemp[3],  0,  0},
+                {0,            0,           0,  1}
+        };
+        double[][]T54= new double[][]{
+                {cosTemp[4],  -sinTemp[4],  0,  0},
+                {0,           0,            -1, 0},
+                {sinTemp[4], cosTemp[4],    0,  0},
+                {0,            0,           0,  1}
+        };
+        double[][]T65= new double[][]{
+                {cosTemp[5],  -sinTemp[5],  0,  0},
+                {0,           0,            -1, -L},
+                {sinTemp[5], cosTemp[5],    0,  0},
+                {0,            0,           0,  1}
+        };
+        double[][]Ttool_6= new double[][]{
+                {1,  0,  0,  tool_offset[0]},
+                {0,  1,  0,  tool_offset[1]},
+                {0,  0,  1,  tool_offset[2]},
+                {0,  0,  0,  1}
+        };
+        double[][]Ttool_0=MatrixMult(MatrixMult(MatrixMult(MatrixMult(MatrixMult(MatrixMult(T10,T21),T32),T43),T54),T65),Ttool_6);
+
+        if(Math.abs(Ttool_0[0][0])<0.001) Ttool_0[0][0]=0;
+        if(Math.abs(Ttool_0[1][0])<0.001) Ttool_0[1][0]=0;
+        if(Math.abs(Ttool_0[2][0])<0.001) Ttool_0[2][0]=0;
+        if(Math.abs(Ttool_0[2][1])<0.001) Ttool_0[2][1]=0;
+        if(Math.abs(Ttool_0[2][2])<0.001) Ttool_0[2][2]=0;
+
+        //double temp=Math.sqrt(Math.pow(Ttool_0[2][1],2)+Math.pow(Ttool_0[2][2],2));
+        double[] X=new double[3];
+        X[0]=Ttool_0[0][3];
+        X[1]=Ttool_0[1][3];
+        X[2]=Ttool_0[2][3];
+
+        return X;
+    }
 
     public double[] Solve_omega_bar(double[] theta_0,double[] theta_target){
         double[] omega_bar=new double[6];

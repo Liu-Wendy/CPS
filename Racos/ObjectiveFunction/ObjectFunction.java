@@ -26,6 +26,7 @@ public class ObjectFunction implements Task{
     private boolean sat = true;
     private double cerr = 0.01;
     int rangeParaSize;
+    boolean log_flag=false;
 
     public ValueArc valueArc;
 
@@ -511,5 +512,11 @@ public class ObjectFunction implements Task{
         return dim;
     }
 
-    public double getinsTime(){return 0;}
+    public double[] getinsTime(){return new double[3];}
+    public double[] getsingleTime(){return new double[3];}
+    public  void setlogFlag(){
+        log_flag=true;
+    }
+    public int getstepnum(){return 0;}
+
 }

@@ -36,5 +36,10 @@ public interface Task {
 	//for get dimension message for each task
 	public abstract Dimension getDim();
 
-	public abstract double getinsTime();
+	public abstract double[] getinsTime();
+	public abstract double[] getsingleTime();
+
+	public abstract void setlogFlag();
+
+	public abstract int getstepnum();
 }

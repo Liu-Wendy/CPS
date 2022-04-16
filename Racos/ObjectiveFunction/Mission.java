@@ -6,7 +6,6 @@ import MPC.Transition;
 import Racos.Componet.Dimension;
 import Racos.Componet.Instance;
 import Racos.Tools.ValueArc;
-import com.greenpineyu.fel.Expression;
 import com.greenpineyu.fel.FelEngine;
 import com.greenpineyu.fel.FelEngineImpl;
 import com.greenpineyu.fel.context.FelContext;
@@ -37,12 +36,17 @@ public class Mission implements Task{
     int matanum=2;
     int forwardCount;
     public double delta=0.1;
-    BufferedWriter bufferedWriter;
-    double instanceTime=0;
+    BufferedWriter bufferedWriter1;
+    BufferedWriter bufferedWriter2;
+    double[] timeProfile = new double[3];
+    double[] singletimeProfile = new double[3];
     private boolean sat = true;
     private double globalPenalty = 0;
     private double cerr = 0.01;
     private double penalty = 0;
+    boolean log_flag=false;
+    InverseSolution IS;
+    int stepnum=0;
 
 
     Random random=new Random();
@@ -59,6 +63,7 @@ public class Mission implements Task{
         VMAX=33;
         boolean flag=false;//to label whether it is the first forward
         forwardCount=0;
+        IS=new InverseSolution();
         //allParametersValues1 = new ArrayList<>();
         //allParametersValues2 = new ArrayList<>();
         this.commands=commands;
@@ -68,11 +73,6 @@ public class Mission implements Task{
         automatas.get(0).currentlocIndex=path[0];
         automatas.get(1).currentlocIndex=path[0];
 
-        try {
-            bufferedWriter = new BufferedWriter(new FileWriter("log.txt"));
-        }catch (IOException e) {
-            System.out.println("Open output.txt fail!");
-        }
         int length=commands.size()>1?commands.size()-1:1;
         for(int i=0;i<length;i++){
             String command=commands.get(i);
@@ -90,7 +90,10 @@ public class Mission implements Task{
                 if(command.contains("fast")){
                     for(int j=current_index;j<current_index+3;j++){
                         //set X_tar(3)
-                        dim.setDimension(j,(-1)*XtarMAX,XtarMAX,true);
+                        if(j==current_index+2){
+                            dim.setDimension(j,0,XtarMAX,true);
+                        }
+                        else dim.setDimension(j,(-1)*XtarMAX,XtarMAX,true);
                     }
                     current_index+=3;
                     for(int j=current_index;j<current_index+3;j++){
@@ -104,7 +107,10 @@ public class Mission implements Task{
                     flag=true;
                     for(int j=current_index;j<current_index+3;j++){
                         //set X_tar(3)
-                        dim.setDimension(j,-210, 210 ,true);
+                        if(j==current_index+2){
+                            dim.setDimension(j,0,XtarMAX,true);
+                        }
+                        else dim.setDimension(j,(-1)*XtarMAX,XtarMAX,true);
                     }
                     current_index+=3;
                     for(int j=current_index;j<current_index+3;j++){
@@ -113,7 +119,7 @@ public class Mission implements Task{
                     }
                     current_index+=3;
                     //set V_tar
-                    dim.setDimension(current_index,(-1)*VMAX,VMAX,true);
+                    dim.setDimension(current_index,16,VMAX,true);
                     current_index++;
                 }
             }
@@ -125,20 +131,33 @@ public class Mission implements Task{
         valueArc = new ValueArc();
 
     }
-    public double getinsTime(){
-        return instanceTime;
-    }
-    public void println(String str) {
+    public double[] getinsTime(){return timeProfile;}
+
+    public void println1(String str) {
         try {
-            bufferedWriter.write(str + "\n");
+            bufferedWriter1.write(str + "\n");
+        } catch (IOException e) {
+            System.out.println("write to file error!");
+        }
+    }
+    public void println2(String str) {
+        try {
+            bufferedWriter2.write(str + "\n");
         } catch (IOException e) {
             System.out.println("write to file error!");
         }
     }
 
-    public void print(String str) {
+    public void print1(String str) {
         try {
-            bufferedWriter.write(str);
+            bufferedWriter1.write(str);
+        } catch (IOException e) {
+            System.out.println("write to file error!");
+        }
+    }
+    public void print2(String str) {
+        try {
+            bufferedWriter2.write(str);
         } catch (IOException e) {
             System.out.println("write to file error!");
         }
@@ -165,8 +184,31 @@ public class Mission implements Task{
         sat=true;
         globalPenalty = 0;
         penalty=0;
-        checkInvarientsByODE(args1,args2,ins.getFeature());
+        stepnum=0;
+        for(int i=0;i<3;i++){
+            singletimeProfile[i]=0;
+        }
+        if(log_flag){
+            try {
+                bufferedWriter1 = new BufferedWriter(new FileWriter("log1.txt"));
+                bufferedWriter2 = new BufferedWriter(new FileWriter("log2.txt"));
+            }catch (IOException e) {
+                System.out.println("Open output.txt fail!");
+            }
+        }
+        try{
+            checkInvarientsByODE(args1,args2);
+        } finally {
+            try {
+                if (bufferedWriter1 != null)
+                    bufferedWriter1.close();
 
+                if (bufferedWriter2 != null)
+                    bufferedWriter2.close();
+            } catch (IOException ex) {
+                System.err.format("IOException: %s%n", ex);
+            }
+        }
         if(!sat) {
             if(penalty + globalPenalty == 0){
                 //todo cfg file should have brackets
@@ -181,6 +223,7 @@ public class Mission implements Task{
             }
             return penAll;
         }
+        //return Math.max(args1[path.length-1],args2[path.length-1]);
         return computeValue(ins);
         //return valueArc.value;
     }
@@ -253,9 +296,9 @@ public class Mission implements Task{
         }
 
     }
-    public void updateFastInfo(HashMap<String,Double> newMap1,int locIndex1,HashMap<String,Double> newMap2,int locIndex2){
+    public void updateFastInfo(HashMap<String,Double> newMap1,int locIndex1,HashMap<String,Double> newMap2,int locIndex2) {
         double res;
-        double a1_theta1=Math.toRadians(newMap1.get("a1_theta1"));
+        /*double a1_theta1=Math.toRadians(newMap1.get("a1_theta1"));
         double a1_theta2=Math.toRadians(newMap1.get("a1_theta2"));
         double a1_theta3=Math.toRadians(newMap1.get("a1_theta3"));
         double a1_theta4=Math.toRadians(newMap1.get("a1_theta4"));
@@ -267,9 +310,93 @@ public class Mission implements Task{
         double a2_theta3=Math.toRadians(newMap2.get("a2_theta3"));
         double a2_theta4=Math.toRadians(newMap2.get("a2_theta4"));
         double a2_theta5=Math.toRadians(newMap2.get("a2_theta5"));
-        double a2_theta6=Math.toRadians(newMap2.get("a2_theta6"));
+        double a2_theta6=Math.toRadians(newMap2.get("a2_theta6"));*/
+        if (locIndex1 < path.length && automatas.get(0).locations.get(path[locIndex1]).name.contains("fast")) {
+            double A1_THETA1 = Math.toRadians(newMap1.get("a1_theta1"));
+            double A1_THETA2 = Math.toRadians(newMap1.get("a1_theta2"));
+            double A1_THETA3 = Math.toRadians(newMap1.get("a1_theta3"));
+            double A1_THETA4 = Math.toRadians(newMap1.get("a1_theta4"));
+            double A1_THETA5 = Math.toRadians(newMap1.get("a1_theta5"));
+            double A1_THETA6 = Math.toRadians(newMap1.get("a1_theta6"));
+            //double x=Math.sin(A1_THETA1)*(-25.28*Math.cos(A1_THETA5)*Math.sin(A1_THETA4)-10*Math.cos(A1_THETA6)*Math.sin(A1_THETA4)*Math.sin(A1_THETA5)-10*Math.cos(A1_THETA4)*Math.sin(A1_THETA6))+Math.cos(A1_THETA1)*(29.69+Math.sin(A1_THETA3)*(108.+Math.sin(A1_THETA3)*(-168.98-10*Math.cos(A1_THETA5)*Math.cos(A1_THETA6)+25.28*Math.sin(A1_THETA5))+Math.cos(A1_THETA3)*(20+Math.cos(A1_THETA4)*(-25.28*Math.cos(A1_THETA5)-10*Math.cos(A1_THETA6)*Math.sin(A1_THETA5))+10*Math.sin(A1_THETA4)*Math.sin(A1_THETA6)))+Math.cos(A1_THETA3)*(Math.cos(A1_THETA3)*(168.98+10*Math.cos(A1_THETA5)*Math.cos(A1_THETA6)-25.28*Math.sin(A1_THETA5))+Math.sin(A1_THETA3)*(20+Math.cos(A1_THETA4)*(-25.28*Math.cos(A1_THETA5)-10*Math.cos(A1_THETA6)*Math.sin(A1_THETA5))+10*Math.sin(A1_THETA4)*Math.sin(A1_THETA6))))
+            double x = Math.sin(A1_THETA1) * (-25.28 * Math.cos(A1_THETA5) * Math.sin(A1_THETA4) - 10 * Math.cos(A1_THETA6) * Math.sin(A1_THETA4) * Math.sin(A1_THETA5) - 10 * Math.cos(A1_THETA4) * Math.sin(A1_THETA6)) + Math.cos(A1_THETA1) * (29.69 + Math.sin(A1_THETA2) * (108. + Math.sin(A1_THETA3) * (-168.98 - 10 * Math.cos(A1_THETA5) * Math.cos(A1_THETA6) + 25.28 * Math.sin(A1_THETA5)) + Math.cos(A1_THETA3) * (20. + Math.cos(A1_THETA4) * (-25.28 * Math.cos(A1_THETA5) - 10 * Math.cos(A1_THETA6) * Math.sin(A1_THETA5)) + 10 * Math.sin(A1_THETA4) * Math.sin(A1_THETA6))) + Math.cos(A1_THETA2) * (Math.cos(A1_THETA3) * (168.98 + 10 * Math.cos(A1_THETA5) * Math.cos(A1_THETA6) - 25.28 * Math.sin(A1_THETA5)) + Math.sin(A1_THETA3) * (20. + Math.cos(A1_THETA4) * (-25.28 * Math.cos(A1_THETA5) - 10 * Math.cos(A1_THETA6) * Math.sin(A1_THETA5)) + 10 * Math.sin(A1_THETA4) * Math.sin(A1_THETA6))));
+            double y = Math.cos(A1_THETA1) * (25.28 * Math.cos(A1_THETA5) * Math.sin(A1_THETA4) + 10. * Math.cos(A1_THETA6) * Math.sin(A1_THETA4) * Math.sin(A1_THETA5) + 10. * Math.cos(A1_THETA4) * Math.sin(A1_THETA6)) + Math.sin(A1_THETA1) * (29.69 + Math.sin(A1_THETA2) * (108. + Math.sin(A1_THETA3) * (-168.98 - 10. * Math.cos(A1_THETA5) * Math.cos(A1_THETA6) + 25.28 * Math.sin(A1_THETA5)) + Math.cos(A1_THETA3) * (20. + Math.cos(A1_THETA4) * (-25.28 * Math.cos(A1_THETA5) - 10. * Math.cos(A1_THETA6) * Math.sin(A1_THETA5)) + 10. * Math.sin(A1_THETA4) * Math.sin(A1_THETA6))) + Math.cos(A1_THETA2) * (Math.cos(A1_THETA3) * (168.98 + 10. * Math.cos(A1_THETA5) * Math.cos(A1_THETA6) - 25.28 * Math.sin(A1_THETA5)) + Math.sin(A1_THETA3) * (20. + Math.cos(A1_THETA4) * (-25.28 * Math.cos(A1_THETA5) - 10. * Math.cos(A1_THETA6) * Math.sin(A1_THETA5)) + 10. * Math.sin(A1_THETA4) * Math.sin(A1_THETA6))));
+            double z = 127. - 20. * Math.sin(A1_THETA2) * Math.sin(A1_THETA3) + 25.28 * Math.cos(A1_THETA4) * Math.cos(A1_THETA5) * Math.sin(A1_THETA2) * Math.sin(A1_THETA3) + 10. * Math.cos(A1_THETA4) * Math.cos(A1_THETA6) * Math.sin(A1_THETA2) * Math.sin(A1_THETA3) * Math.sin(A1_THETA5) + Math.cos(A1_THETA3) * Math.sin(A1_THETA2) * (-168.98 - 10. * Math.cos(A1_THETA5) * Math.cos(A1_THETA6) + 25.28 * Math.sin(A1_THETA5)) - 10. * Math.sin(A1_THETA2) * Math.sin(A1_THETA3) * Math.sin(A1_THETA4) * Math.sin(A1_THETA6) + Math.cos(A1_THETA2) * (108. + Math.sin(A1_THETA3) * (-168.98 - 10. * Math.cos(A1_THETA5) * Math.cos(A1_THETA6) + 25.28 * Math.sin(A1_THETA5)) + Math.cos(A1_THETA3) * (20. + Math.cos(A1_THETA4) * (-25.28 * Math.cos(A1_THETA5) - 10. * Math.cos(A1_THETA6) * Math.sin(A1_THETA5)) + 10. * Math.sin(A1_THETA4) * Math.sin(A1_THETA6)));
 
+            newMap1.put("a1_x1", x);
+            newMap1.put("a1_x2", y);
+            newMap1.put("a1_x3", z);
+        }
+
+        if (locIndex2 < path.length && automatas.get(1).locations.get(path[locIndex2]).name.contains("fast")) {
+            double A2_THETA1 = Math.toRadians(newMap2.get("a2_theta1"));
+            double A2_THETA2 = Math.toRadians(newMap2.get("a2_theta2"));
+            double A2_THETA3 = Math.toRadians(newMap2.get("a2_theta3"));
+            double A2_THETA4 = Math.toRadians(newMap2.get("a2_theta4"));
+            double A2_THETA5 = Math.toRadians(newMap2.get("a2_theta5"));
+            double A2_THETA6 = Math.toRadians(newMap2.get("a2_theta6"));
+
+            double x = Math.sin(A2_THETA1) * (-25.28 * Math.cos(A2_THETA5) * Math.sin(A2_THETA4) - 10 * Math.cos(A2_THETA6) * Math.sin(A2_THETA4) * Math.sin(A2_THETA5) - 10 * Math.cos(A2_THETA4) * Math.sin(A2_THETA6)) + Math.cos(A2_THETA1) * (29.69 + Math.sin(A2_THETA2) * (108. + Math.sin(A2_THETA3) * (-168.98 - 10 * Math.cos(A2_THETA5) * Math.cos(A2_THETA6) + 25.28 * Math.sin(A2_THETA5)) + Math.cos(A2_THETA3) * (20. + Math.cos(A2_THETA4) * (-25.28 * Math.cos(A2_THETA5) - 10 * Math.cos(A2_THETA6) * Math.sin(A2_THETA5)) + 10 * Math.sin(A2_THETA4) * Math.sin(A2_THETA6))) + Math.cos(A2_THETA2) * (Math.cos(A2_THETA3) * (168.98 + 10 * Math.cos(A2_THETA5) * Math.cos(A2_THETA6) - 25.28 * Math.sin(A2_THETA5)) + Math.sin(A2_THETA3) * (20. + Math.cos(A2_THETA4) * (-25.28 * Math.cos(A2_THETA5) - 10 * Math.cos(A2_THETA6) * Math.sin(A2_THETA5)) + 10 * Math.sin(A2_THETA4) * Math.sin(A2_THETA6))));
+            double y = Math.cos(A2_THETA1) * (25.28 * Math.cos(A2_THETA5) * Math.sin(A2_THETA4) + 10. * Math.cos(A2_THETA6) * Math.sin(A2_THETA4) * Math.sin(A2_THETA5) + 10. * Math.cos(A2_THETA4) * Math.sin(A2_THETA6)) + Math.sin(A2_THETA1) * (29.69 + Math.sin(A2_THETA2) * (108. + Math.sin(A2_THETA3) * (-168.98 - 10. * Math.cos(A2_THETA5) * Math.cos(A2_THETA6) + 25.28 * Math.sin(A2_THETA5)) + Math.cos(A2_THETA3) * (20. + Math.cos(A2_THETA4) * (-25.28 * Math.cos(A2_THETA5) - 10. * Math.cos(A2_THETA6) * Math.sin(A2_THETA5)) + 10. * Math.sin(A2_THETA4) * Math.sin(A2_THETA6))) + Math.cos(A2_THETA2) * (Math.cos(A2_THETA3) * (168.98 + 10. * Math.cos(A2_THETA5) * Math.cos(A2_THETA6) - 25.28 * Math.sin(A2_THETA5)) + Math.sin(A2_THETA3) * (20. + Math.cos(A2_THETA4) * (-25.28 * Math.cos(A2_THETA5) - 10. * Math.cos(A2_THETA6) * Math.sin(A2_THETA5)) + 10. * Math.sin(A2_THETA4) * Math.sin(A2_THETA6))));
+            double z = 127. - 20. * Math.sin(A2_THETA2) * Math.sin(A2_THETA3) + 25.28 * Math.cos(A2_THETA4) * Math.cos(A2_THETA5) * Math.sin(A2_THETA2) * Math.sin(A2_THETA3) + 10. * Math.cos(A2_THETA4) * Math.cos(A2_THETA6) * Math.sin(A2_THETA2) * Math.sin(A2_THETA3) * Math.sin(A2_THETA5) + Math.cos(A2_THETA3) * Math.sin(A2_THETA2) * (-168.98 - 10. * Math.cos(A2_THETA5) * Math.cos(A2_THETA6) + 25.28 * Math.sin(A2_THETA5)) - 10. * Math.sin(A2_THETA2) * Math.sin(A2_THETA3) * Math.sin(A2_THETA4) * Math.sin(A2_THETA6) + Math.cos(A2_THETA2) * (108. + Math.sin(A2_THETA3) * (-168.98 - 10. * Math.cos(A2_THETA5) * Math.cos(A2_THETA6) + 25.28 * Math.sin(A2_THETA5)) + Math.cos(A2_THETA3) * (20. + Math.cos(A2_THETA4) * (-25.28 * Math.cos(A2_THETA5) - 10. * Math.cos(A2_THETA6) * Math.sin(A2_THETA5)) + 10. * Math.sin(A2_THETA4) * Math.sin(A2_THETA6)));
+
+            newMap2.put("a2_x1", x);
+            newMap2.put("a2_x2", y);
+            newMap2.put("a2_x3", z);
+
+        }
+    }
+
+    /*public void updateFastInfo(HashMap<String,Double> newMap1,int locIndex1,HashMap<String,Double> newMap2,int locIndex2){
+        double res;
+        *//*double a1_theta1=Math.toRadians(newMap1.get("a1_theta1"));
+        double a1_theta2=Math.toRadians(newMap1.get("a1_theta2"));
+        double a1_theta3=Math.toRadians(newMap1.get("a1_theta3"));
+        double a1_theta4=Math.toRadians(newMap1.get("a1_theta4"));
+        double a1_theta5=Math.toRadians(newMap1.get("a1_theta5"));
+        double a1_theta6=Math.toRadians(newMap1.get("a1_theta6"));
+
+        double a2_theta1=Math.toRadians(newMap2.get("a2_theta1"));
+        double a2_theta2=Math.toRadians(newMap2.get("a2_theta2"));
+        double a2_theta3=Math.toRadians(newMap2.get("a2_theta3"));
+        double a2_theta4=Math.toRadians(newMap2.get("a2_theta4"));
+        double a2_theta5=Math.toRadians(newMap2.get("a2_theta5"));
+        double a2_theta6=Math.toRadians(newMap2.get("a2_theta6"));*//*
         if(locIndex1<path.length&&automatas.get(0).locations.get(path[locIndex1]).name.contains("fast")){
+            double a1_theta1=(newMap1.get("a1_theta1"));
+            double a1_theta2=(newMap1.get("a1_theta2"));
+            double a1_theta3=(newMap1.get("a1_theta3"));
+            double a1_theta4=(newMap1.get("a1_theta4"));
+            double a1_theta5=(newMap1.get("a1_theta5"));
+            double a1_theta6=(newMap1.get("a1_theta6"));
+
+            double[] theta1=new double[]{a1_theta1,a1_theta2,a1_theta3,a1_theta4,a1_theta5,a1_theta6};
+            double[] X1=IS.F_forward(theta1);
+            newMap1.put("a1_x1",X1[0]);
+            newMap1.put("a1_x2",X1[1]);
+            newMap1.put("a1_x3",X1[2]);
+        }
+
+        if(locIndex2<path.length&&automatas.get(1).locations.get(path[locIndex2]).name.contains("fast")) {
+            double a2_theta1=(newMap2.get("a2_theta1"));
+            double a2_theta2=(newMap2.get("a2_theta2"));
+            double a2_theta3=(newMap2.get("a2_theta3"));
+            double a2_theta4=(newMap2.get("a2_theta4"));
+            double a2_theta5=(newMap2.get("a2_theta5"));
+            double a2_theta6=(newMap2.get("a2_theta6"));
+
+            double[] theta2=new double[]{a2_theta1,a2_theta2,a2_theta3,a2_theta4,a2_theta5,a2_theta6};
+            double[] X2=IS.F_forward(theta2);
+            newMap2.put("a2_x1", X2[0]);
+            newMap2.put("a2_x2", X2[1]);
+            newMap2.put("a2_x3", X2[2]);
+
+        }
+
+
+
+
+        *//*if(locIndex1<path.length&&automatas.get(0).locations.get(path[locIndex1]).name.contains("fast")){
             res=-24.28*Math.sin(a1_theta1)*Math.sin(a1_theta4)*Math.sin(a1_theta5)+Math.cos(a1_theta1)*(29.69+Math.cos(a1_theta3)*(-168.98-24.28*Math.cos(a1_theta5))*Math.sin(a1_theta2)-20.0*Math.sin(a1_theta2)*Math.sin(a1_theta3)+24.28*Math.cos(a1_theta4)*Math.sin(a1_theta2)*Math.sin(a1_theta3)*Math.sin(a1_theta5)+Math.cos(a1_theta2)*(108.0+(-168.98-24.28*Math.cos(a1_theta5))*Math.sin(a1_theta3)+Math.cos(a1_theta3)*(20.0-24.28*Math.cos(a1_theta4)*Math.sin(a1_theta5))));
             newMap1.put("a1_x1",res);
 
@@ -289,8 +416,8 @@ public class Mission implements Task{
 
             res = (127.0 + Math.sin(a2_theta2) * (-108.0 + (168.98 + 24.28 * Math.cos(a2_theta5)) * Math.sin(a2_theta3) + Math.cos(a2_theta3) * (-20.0 + 24.28 * Math.cos(a2_theta4) * Math.sin(a2_theta5))) + Math.cos(a2_theta2) * (Math.cos(a2_theta3) * (-168.98 - 24.28 * Math.cos(a2_theta5)) + Math.sin(a2_theta3) * (-20.0 + 24.28 * Math.cos(a2_theta4) * Math.sin(a2_theta5))));
             newMap2.put("a2_x3", res);
-        }
-    }
+        }*//*
+    }*/
 
     public void updateForwardInfo(HashMap<String, Double> newMap, int locIndex, int autoIndex) {
         if(autoIndex==0){
@@ -300,7 +427,7 @@ public class Mission implements Task{
             }
         }
     }
-    public boolean checkInvarientsByODE(double []args1,double []args2, double[] ins){
+    public boolean checkInvarientsByODE(double []args1,double []args2){
         double end1 = 0,end2=0;
         HashMap<String,Double> newMap1 = cloneAllInitParametersValues(0);
         HashMap<String,Double> newMap2 = cloneAllInitParametersValues(1);
@@ -309,8 +436,15 @@ public class Mission implements Task{
         double step1 = 0,step2=0;
         int locIndex1=0,locIndex2=0;
         boolean gotoNextLoc1=false,gotoNextLoc2=false;
+        updateFastInfo(newMap1,locIndex1,newMap2,locIndex2);
+        if(log_flag){
+            logxyz(newMap1,1);
+            logxyz(newMap2,2);
+        }
+
 
         while(step1<totalTime1&&step2<totalTime2){
+
             double delta1=delta;
             if(newMap1.get("a1_t_current")+delta1>args1[locIndex1] || newMap2.get("a2_t_current")+delta1>args2[locIndex2]){
                 double tmp1=args1[locIndex1]-newMap1.get("a1_t_current");
@@ -328,21 +462,41 @@ public class Mission implements Task{
                 }
             }
             if(delta1!=0) {
-
+                stepnum++;
+                System.out.println(stepnum+":");
                 double currentTime = System.currentTimeMillis();
                 newMap1 = computeValuesByFlow(newMap1, 0, locIndex1, delta1);
                 newMap2 = computeValuesByFlow(newMap2, 1, locIndex2, delta1);
                 double endTime = System.currentTimeMillis();
-                instanceTime+=(endTime - currentTime) / 1000;
+                double temptime=(endTime - currentTime) / 1000;
+                System.out.println("\t computing by flow costs: "+temptime);
+                timeProfile[0] +=temptime;
+                singletimeProfile[0]+=temptime;
 
+                currentTime = System.currentTimeMillis();
                 updateFastInfo(newMap1, locIndex1, newMap2, locIndex2);//fast mode need to calculate X
-
+                endTime = System.currentTimeMillis();
+                temptime=(endTime - currentTime) / 1000;
+                System.out.println("\t calculating X costs: "+temptime);
+                timeProfile[1] += temptime;
+                singletimeProfile[1] += temptime;
                 //check forbidden
+                currentTime = System.currentTimeMillis();
                 checkConstraints(newMap1, newMap2);
+                endTime = System.currentTimeMillis();
+                temptime=(endTime - currentTime) / 1000;
+                System.out.println("\t checking forbidden costs: "+temptime);
+                timeProfile[2] += temptime;
+                singletimeProfile[2] += temptime;
 
                 //check Automata1
-                checkAutomata(newMap1, 0, locIndex1);
-                checkAutomata(newMap2, 1, locIndex2);
+                //checkAutomata(newMap1, 0, locIndex1);
+                //checkAutomata(newMap2, 1, locIndex2);
+
+                if(locIndex1<3||locIndex1>5)
+                    logxyz(newMap1,1);
+                if(locIndex2<3||locIndex2>5)
+                    logxyz(newMap2,2);
             }
 
             if(gotoNextLoc1){
@@ -365,7 +519,8 @@ public class Mission implements Task{
                             System.out.println(entry.getValue());
                             System.exit(0);
                         }
-                        newMap1.put(entry.getKey(), result);
+
+                        newMap1.put("a1_"+entry.getKey(), result);
                     }
                 }
 
@@ -390,12 +545,16 @@ public class Mission implements Task{
                             System.out.println(entry.getValue());
                             System.exit(0);
                         }
-                        newMap2.put(entry.getKey(), result);
+                        newMap2.put("a2_"+entry.getKey(), result);
                     }
                 }
             }
             step1+=delta1;
             step2+=delta1;
+            /*System.out.println(stepnum+":");
+            System.out.println("\t computing by flow costs: "+timeProfile[0]);
+            System.out.println("\t computing by flow costs: "+timeProfile[0]);
+            System.out.println("\t computing by flow costs: "+timeProfile[0]);*/
 
         }
         while(step1<totalTime1){
@@ -405,20 +564,45 @@ public class Mission implements Task{
                 delta1=args1[locIndex1]-newMap1.get("a1_t_current");
                 gotoNextLoc1=true;
             }
-            double currentTime = System.currentTimeMillis();
-            newMap1 = computeValuesByFlow(newMap1,0,locIndex1,delta1);
-            double endTime = System.currentTimeMillis();
-            instanceTime+=(endTime - currentTime) / 1000;
-            updateFastInfo(newMap1,locIndex1,newMap2,locIndex2);
-            //check forbidden
-            checkConstraints(newMap1, newMap2);
-            checkAutomata(newMap1,0,locIndex1);
+            if(delta1!=0) {
+                stepnum++;
+                System.out.println(stepnum+":");
+                double currentTime = System.currentTimeMillis();
+                newMap1 = computeValuesByFlow(newMap1, 0, locIndex1, delta1);
+                double endTime = System.currentTimeMillis();
+                double temptime= (endTime - currentTime) / 1000;
+                System.out.printf("\t computing by flow costs: %.8f \n",temptime);
+                timeProfile[0] +=temptime;
+                singletimeProfile[0] += temptime;
+
+                currentTime = System.currentTimeMillis();
+                updateFastInfo(newMap1, locIndex1, newMap2, locIndex2);
+                endTime = System.currentTimeMillis();
+                temptime=(endTime - currentTime) / 1000;
+                System.out.println("\t calculating X costs: "+temptime);
+                timeProfile[1] += temptime;
+                singletimeProfile[1] += temptime;
+
+                //check forbidden
+                currentTime = System.currentTimeMillis();
+                checkConstraints(newMap1, newMap2);
+                endTime = System.currentTimeMillis();
+                temptime=(endTime - currentTime) / 1000;
+                System.out.println("\t checking forbidden costs: "+temptime);
+                timeProfile[2] += temptime;
+                singletimeProfile[2] += temptime;
+
+                //checkAutomata(newMap1, 0, locIndex1);
+                if(locIndex1<3||locIndex1>5)
+                    logxyz(newMap1,1);
+            }
             if(gotoNextLoc1){
                 locIndex1++;
                 //allParametersValues1.add(newMap1);
                 gotoNextLoc1=false;
             }
             step1+=delta1;
+
         }
         while(step2<totalTime2){
 
@@ -427,25 +611,64 @@ public class Mission implements Task{
                 delta1=args2[locIndex2]-newMap2.get("a2_t_current");
                 gotoNextLoc2=true;
             }
-            double currentTime = System.currentTimeMillis();
-            newMap2 = computeValuesByFlow(newMap2,1,locIndex2,delta1);
-            double endTime = System.currentTimeMillis();
-            instanceTime+=(endTime - currentTime) / 1000;
-            updateFastInfo(newMap1,locIndex1,newMap2,locIndex2);
-            //check forbidden
-            checkConstraints(newMap1, newMap2);
-            checkAutomata(newMap2,1,locIndex2);
+            if(delta1!=0) {
+                stepnum++;
+                System.out.println(stepnum+":");
+                double currentTime = System.currentTimeMillis();
+                newMap2 = computeValuesByFlow(newMap2, 1, locIndex2, delta1);
+                double endTime = System.currentTimeMillis();
+                double temptime= (endTime - currentTime) / 1000;
+                System.out.println("\t computing by flow costs: "+temptime);
+                timeProfile[0] +=temptime;
+                singletimeProfile[0] += temptime;
+
+                currentTime = System.currentTimeMillis();
+                updateFastInfo(newMap1, locIndex1, newMap2, locIndex2);
+                endTime = System.currentTimeMillis();
+                temptime=(endTime - currentTime) / 1000;
+                System.out.println("\t calculating X costs: "+temptime);
+                timeProfile[1] += temptime;
+                singletimeProfile[1] += temptime;
+
+                //check forbidden
+                currentTime = System.currentTimeMillis();
+                checkConstraints(newMap1, newMap2);
+                temptime=(endTime - currentTime) / 1000;
+                System.out.println("\t checking forbidden costs: "+temptime);
+                timeProfile[2] += temptime;
+                singletimeProfile[2] += temptime;
+                //checkAutomata(newMap2, 1, locIndex2);
+
+                if(locIndex2<3||locIndex2>5)
+                    logxyz(newMap2,2);
+            }
             if(gotoNextLoc2){
                 locIndex2++;
                 //allParametersValues2.add(newMap2);
                 gotoNextLoc2=false;
             }
             step2+=delta1;
+
         }
 
         return true;
     }
 
+    private void logxyz(HashMap<String, Double> newMap1,int index) {
+        if(!log_flag) return;
+        if(index==1){
+            print1(Double.toString(newMap1.get("a1_x1"))+" ");
+            print1(Double.toString(newMap1.get("a1_x2"))+" ");
+            println1(Double.toString(newMap1.get("a1_x3")));
+        }
+        else {
+            print2(Double.toString(newMap1.get("a2_x1"))+" ");
+            print2(Double.toString(newMap1.get("a2_x2")+100)+" ");
+            println2(Double.toString(newMap1.get("a2_x3")));
+        }
+
+
+    }
 
 
     public HashMap<String,Double> computeValuesByFlow(HashMap<String,Double> parametersValues,int index,int locIndex,double arg){
@@ -727,6 +950,9 @@ public class Mission implements Task{
     public Dimension getDim() {
         return dim;
     }
+    public  void setlogFlag(){
+        log_flag=true;
+    }
 
     public int setAutomataByins(Instance ins){
 
@@ -739,7 +965,7 @@ public class Mission implements Task{
         int current_index=0;
 
         HashMap<String,Double> newMap = new HashMap<>();
-        InverseSolution IS=new InverseSolution();
+        //InverseSolution IS=new InverseSolution();
         double[] X_tar=new double[3];
         double[] R_tar=new double[3];
         double[] current_Theta=new double[6];//current theta
@@ -929,13 +1155,23 @@ public class Mission implements Task{
                 String name=automatas.get(i).locations.get(locIndex+1).name;
 
                 if(name.contains("fast")){
-                    X_tar[0]=10;
-                    X_tar[1]=20;
-                    X_tar[2]=30;
+                    if(i==0) {
+                        X_tar[0] = 10;
+                        X_tar[1] = 100;
+                        X_tar[2] = 30;
 
-                    R_tar[0]=1;
-                    R_tar[1]=2;
-                    R_tar[2]=3;
+                        R_tar[0] = 1;
+                        R_tar[1] = 2;
+                        R_tar[2] = 3;
+                    }else {
+                        X_tar[0] = 10;
+                        X_tar[1] = -100;
+                        X_tar[2] = 30;
+
+                        R_tar[0] = 1;
+                        R_tar[1] = 2;
+                        R_tar[2] = 3;
+                    }
 
                     double[] theta_tar=IS.F_inverse(X_tar,R_tar,current_Theta);
 
@@ -1111,7 +1347,12 @@ public class Mission implements Task{
         double t3=time[2]+lastTime;
         String tmp="";
         for(int i=0;i<6;i++){
-            tmp=tmp+"theta"+Integer.toString(i+1)+"="+Double.toString(theta_tar[i])+" &amp;";
+            if(Auto_index==0){
+                tmp=tmp+"a1_theta"+Integer.toString(i+1)+"="+Double.toString(theta_tar[i])+" &amp;";
+            }
+            else{
+                tmp=tmp+"a2_theta"+Integer.toString(i+1)+"="+Double.toString(theta_tar[i])+" &amp;";
+            }
         }
         if(locIndex!=0){
             Transition transition=automatas.get(Auto_index).getTransitionBySourceAndTarget(path[locIndex-1],path[locIndex]);
@@ -1148,6 +1389,7 @@ public class Mission implements Task{
         location.setVariant("t_current<="+t3,automatas.get(Auto_index).parameters);
         location.setFlow(tmp3,automatas.get(Auto_index).parameters);
     }
-
+    public int getstepnum(){return stepnum;}
+    public double[] getsingleTime(){return singletimeProfile;}
 
 }

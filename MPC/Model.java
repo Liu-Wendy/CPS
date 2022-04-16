@@ -4,7 +4,7 @@ import MPC.tools.Fel_ExpressionProc;
 import Racos.Componet.Instance;
 import Racos.Method.Continue;
 import Racos.ObjectiveFunction.Mission;
-import Racos.ObjectiveFunction.ObjectFunction;
+//import Racos.ObjectiveFunction.ObjectFunction;
 import Racos.ObjectiveFunction.Task;
 import Racos.Tools.ValueArc;
 
@@ -363,7 +363,7 @@ public class Model {
 //            ValueArc valueArc = con.run2();
             double currentT2 = System.currentTimeMillis();
             ins = con.getOptimal();
-
+            System.out.println("\n【RESULT】");
             System.out.print("best function value:");
             System.out.println(ins.getValue() + "     ");
             result.add(ins);
@@ -393,9 +393,17 @@ public class Model {
                 }
                 System.out.println("]");
             }
-        }
-        System.out.println("Simulation time:"+t.getinsTime());
 
+            System.out.println("\nSimulation step:"+t.getstepnum());
+            System.out.println("\n【TIME COST】");
+            System.out.println("computing by flow costs:"+t.getsingleTime()[0]);
+            System.out.println("(fast mode)calculating X costs:"+t.getsingleTime()[1]);
+            System.out.println("checking forbidden costs:"+t.getsingleTime()[2]);
+        }
+        System.out.println("\n【TOTAL TIME COST】");
+        System.out.println("computing by flow costs:"+t.getinsTime()[0]);
+        System.out.println("(fast mode)calculating X costs:"+t.getinsTime()[1]);
+        System.out.println("checking forbidden costs:"+t.getinsTime()[2]);
         return pruning;
 
     }
