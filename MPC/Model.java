@@ -40,10 +40,13 @@ public class Model {
                 temp.initParameterValues.put("theta"+Integer.toString(j+1),0.0);
                 temp.initParameterValues.put("omega"+Integer.toString(j+1),0.0);
             }
+            temp.initParameterValues.put("x"+Integer.toString(1),208.67);
+            temp.initParameterValues.put("x"+Integer.toString(2),0.0);
+            temp.initParameterValues.put("x"+Integer.toString(3),229.72);
             for(int j=0;j<3;j++){
                 temp.parameters.add("x"+Integer.toString(j+1));
                 temp.parameters.add("v"+Integer.toString(j+1));
-                temp.initParameterValues.put("x"+Integer.toString(j+1),0.0);
+
                 temp.initParameterValues.put("v"+Integer.toString(j+1),0.0);
                 temp.initParameterValues.put("r"+Integer.toString(j+1),0.0);
             }
@@ -412,7 +415,7 @@ public class Model {
         ArrayList<String> commands=new ArrayList<>();
         commands.add(0,"fast");
         commands.add(1,"forward");
-        commands.add(2,"fast");
+        commands.add(2,"forward");
         Model model=new Model(commands,2);
         double currentTime = System.currentTimeMillis();
         model.runRacos();

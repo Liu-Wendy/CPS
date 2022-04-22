@@ -517,7 +517,7 @@ public class Continue extends BaseParameters{
 			for(int i=1; i<MaxIteration; i++){
 				double bestValue = getOptimal().getValue();
 				System.out.println("i="+i+"  best Value="+bestValue);
-				if(bestValue<=0) {
+				if(bestValue<=0||i==MaxIteration-1) {
 					task.setlogFlag();
 					task.getValue(Optimal);
 					System.out.println("\ncurrent Iteration: "+i);
