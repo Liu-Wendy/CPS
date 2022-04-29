@@ -85,6 +85,19 @@ public class Model {
                         }
                         lastLocNum=locNum;
                     }
+                }else if(command.contains("doorlike")){
+                    for(int k=0;k<3;k++) {
+                        locNum++;
+                        Location location = new Location(locNum, "doorlike_period"+Integer.toString(k+1));
+                        temp.locations.put(location.getNo(),location);
+                        if(lastLocNum!=-1){
+                            Transition transition = new Transition(lastLocNum, locNum);
+                            temp.locations.get(lastLocNum).addNeibour(locNum);
+                            temp.transitions.add(transition);
+                        }
+                        lastLocNum=locNum;
+                    }
+
                 }else{
                     //todo other modes
                 }
@@ -338,7 +351,7 @@ public class Model {
     }
     boolean runRacos() {
         int samplesize = 8;       // parameter: the number of samples in each iteration
-        int iteration = 500;       // parameter: the number of iterations for batch racos
+        int iteration = 100;       // parameter: the number of iterations for batch racos
         int budget = 2000;         // parameter: the budget of sampling for sequential racos
         int positivenum = 3;       // parameter: the number of positive instances in each iteration
         double probability = 0.95; // parameter: the probability of sampling from the model
@@ -414,8 +427,8 @@ public class Model {
     public static void main(String[] args) {
         ArrayList<String> commands=new ArrayList<>();
         commands.add(0,"fast");
-        commands.add(1,"forward");
-        commands.add(2,"forward");
+        commands.add(1,"doorlike");
+        commands.add(2,"fast");
         Model model=new Model(commands,2);
         double currentTime = System.currentTimeMillis();
         model.runRacos();

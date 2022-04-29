@@ -10,6 +10,7 @@ public class InverseSolution {
     double L;
     double[] tool_offset ;
     int NOSOLUTION;
+    double v_max;
     double[] theta_speed_max;
     double[] a_max_fast;
     double[] w_fast;
@@ -17,6 +18,7 @@ public class InverseSolution {
     double a_max_forward;
     double[] v_forward;
     double[] a_forward;
+    double[] v_doorlike;
     public InverseSolution(){
         PI=3.1415926;
         D1=127.000;
@@ -27,6 +29,7 @@ public class InverseSolution {
         L=-24.280;
         tool_offset = new double[]{10,0,1};
         NOSOLUTION = 1000;
+        v_max=50;
         theta_speed_max = new double[]{50.0,50.0,50.0,250.0/3.0,250.0/3.0,250.0/3.0};// deg/s
         a_max_fast=new double[]{500,500,500,500,500,500};// deg/s^2
         a_max_forward=20;//mm/s
@@ -34,6 +37,7 @@ public class InverseSolution {
         w_fast=new double[6];
         v_forward=new double[3];
         a_forward=new double[3];
+        v_doorlike=new double[3];
     }
 
     public double[][] MatrixMult(double[][] m1,double[][]m2){
@@ -339,4 +343,13 @@ public class InverseSolution {
         return time;
     }
 
+    public double[] Solve_T12_doorlike(double[] delta_x, double height) {
+        double t1=height/v_max;
+        double t2=Math.max(Math.abs(delta_x[0]),Math.max(Math.abs(delta_x[1]),Math.abs(delta_x[2])))/v_max;
+        for(int i=0;i<3;i++){
+            v_doorlike[i]=delta_x[i]/t2;
+        }
+        double t3=height/v_max;
+        return new double[]{t1,t1+t2,t1+t2+t3};
+    }
 }

@@ -78,6 +78,7 @@ public class Mission implements Task{
             String command=commands.get(i);
             if(command.contains("fast")) paramSize+=6;
             else if(command.contains("forward")) paramSize+=7;
+            else if(command.contains("doorlike")) paramSize+=7;
             else{}//TODO -- other modes
         }
 
@@ -120,6 +121,21 @@ public class Mission implements Task{
                     current_index+=3;
                     //set V_tar
                     dim.setDimension(current_index,16,VMAX,true);
+                    current_index++;
+                }else if(command.contains("doorlike")) {
+                    flag=true;
+                    for(int j=current_index;j<current_index+3;j++){
+                        //set X_tar(3)
+                       dim.setDimension(j,(-1)*XtarMAX,XtarMAX,true);
+                    }
+                    current_index+=3;
+                    for(int j=current_index;j<current_index+3;j++){
+                        //set R_tar(3)
+                        dim.setDimension(j,-RtarMAX,RtarMAX,true);
+                    }
+                    current_index+=3;
+                    //set height
+                    dim.setDimension(current_index,10,40,true);
                     current_index++;
                 }
             }
@@ -1021,7 +1037,7 @@ public class Mission implements Task{
 
         for(int i=0;i< automatas.size();i++) {
             boolean first_forward=true;
-            boolean first_fast=true;
+            boolean first_fast=true, first_doorlike=true;
             int locIndex;
             int len=path.length>3?path.length-3:path.length;
             lastTime=0;
@@ -1071,7 +1087,7 @@ public class Mission implements Task{
                     while (theta_tar[0]==1000||X_tar[2]<0){
                         current_index-=6;
                         for (int k = 0; k < 6; k++) {
-                            ins.setFeature(current_index+k, dim.getRegion(i)[0]+random.nextDouble()*(dim.getRegion(i)[1]-dim.getRegion(i)[0]));
+                            ins.setFeature(current_index+k, dim.getRegion(current_index+k)[0]+random.nextDouble()*(dim.getRegion(current_index+k)[1]-dim.getRegion(current_index+k)[0]));
                         }
 
                         X_tar[0]=ins.getFeature(current_index)+current_X[0];
@@ -1186,6 +1202,78 @@ public class Mission implements Task{
                     lastTime+=t[2];
 
 
+                }else if(name.contains("doorlike")){
+                    if(!first_doorlike) {
+                        if(name.contains("period3")){
+                            first_doorlike=true;
+                        }
+                        continue;
+                    }
+
+                    X_tar[0]=ins.getFeature(current_index)+current_X[0];
+                    X_tar[1]=ins.getFeature(current_index+1)+current_X[1];
+                    X_tar[2]=ins.getFeature(current_index+2)+current_X[2];
+                    current_index+=3;
+
+                    R_tar[0]=ins.getFeature(current_index);
+                    R_tar[1]=ins.getFeature(current_index+1);
+                    R_tar[2]=ins.getFeature(current_index+2);
+                    current_index+=3;
+
+                    double Height=ins.getFeature(current_index);
+                    current_index+=1;
+
+                    double[] tmp_tar1=new double[]{current_X[0],current_X[1],current_X[2]+Height};
+                    double[] tmp_tar2=new double[]{X_tar[0],X_tar[1],X_tar[2]+Height};
+
+                    double[] theta_tar=IS.F_inverse(X_tar,R_tar,current_Theta);
+                    while (theta_tar[0]==1000||X_tar[2]<0){
+                        current_index-=7;
+                        for (int k = 0; k < 7; k++) {
+                            ins.setFeature(current_index+k, dim.getRegion(current_index+k)[0]+random.nextDouble()*(dim.getRegion(current_index+k)[1]-dim.getRegion(current_index+k)[0]));
+                        }
+
+                        X_tar[0]=ins.getFeature(current_index)+current_X[0];
+                        X_tar[1]=ins.getFeature(current_index+1)+current_X[1];
+                        X_tar[2]=ins.getFeature(current_index+2)+current_X[2];
+                        current_index+=3;
+
+                        R_tar[0]=ins.getFeature(current_index);
+                        R_tar[1]=ins.getFeature(current_index+1);
+                        R_tar[2]=ins.getFeature(current_index+2);
+                        current_index+=3;
+
+                        Height=ins.getFeature(current_index);
+                        current_index+=1;
+
+                        tmp_tar1=new double[]{current_X[0],current_X[1],current_X[2]+Height};
+                        tmp_tar2=new double[]{X_tar[0],X_tar[1],X_tar[2]+Height};
+
+                        //Calculate inverse solution for theta
+                        theta_tar=IS.F_inverse(X_tar,R_tar,current_Theta);
+                    }
+
+                    for(int j=0;j<3;j++) {
+                        delta_X[j] = tmp_tar2[j] - tmp_tar1[j];
+                    }
+                    double[] t=IS.Solve_T12_doorlike(delta_X,Height);
+                    if(i==0){
+                        for(int m=0;m<3;m++){
+                            Time1.add(t[m]);
+                        }
+                    }else {
+                        for(int m=0;m<3;m++){
+                            Time2.add(t[m]);
+                        }
+                    }
+                    double[] v_doorlike=IS.v_doorlike;
+                    setDoorlike(t,lastTime,i,locIndex,theta_tar,v_doorlike, IS.v_max);
+
+                    theta=theta_tar.clone();
+                    X=X_tar.clone();
+                    R=R_tar.clone();
+                    first_doorlike=false;
+                    lastTime+=t[2];
                 }
 
             }
@@ -1273,7 +1361,6 @@ public class Mission implements Task{
                     //Time.add(IS.Solve_T12_forward(delta_X,V_tar));
                     double[] a_forward=IS.a_forward;
                     double[] v_forward=IS.v_forward;
-                    //TODO calculate invarients/flow/guard... with theta_tar and omega_bar
                     setForward(t,lastTime,i,locIndex,theta_tar,a_forward,v_forward);
                 }
             //todo set last move
@@ -1285,6 +1372,8 @@ public class Mission implements Task{
 
 
     }
+
+
 
     private double[] getFastInfo() {
         double A1_THETA1 = 0;
@@ -1358,6 +1447,19 @@ public class Mission implements Task{
                         }
                         lastLocNum=locNum;
                     }
+                }else if(command.contains("doorlike")){
+                    for(int k=0;k<3;k++) {
+                        locNum++;
+                        Location location = new Location(locNum, "doorlike_period"+Integer.toString(k+1));
+                        temp.locations.put(location.getNo(),location);
+                        if(lastLocNum!=-1){
+                            Transition transition = new Transition(lastLocNum, locNum);
+                            temp.locations.get(lastLocNum).addNeibour(locNum);
+                            temp.transitions.add(transition);
+                        }
+                        lastLocNum=locNum;
+                    }
+
                 }else{
                     //todo other modes
                 }
@@ -1444,6 +1546,33 @@ public class Mission implements Task{
             tmp3=tmp3+"v"+Integer.toString(i+1)+"'="+Double.toString(a_forward[i]*(-1))+"&amp;";
 
 
+        }
+        Location location=automatas.get(Auto_index).locations.get(locIndex+1);
+        location.setVariant("t_current<="+t1,automatas.get(Auto_index).parameters);
+        location.setFlow(tmp1,automatas.get(Auto_index).parameters);
+        Transition transition=automatas.get(Auto_index).getTransitionBySourceAndTarget(locIndex+1,locIndex+2);
+        transition.setGuard("t=="+t1,automatas.get(Auto_index).parameters);
+
+        location=automatas.get(Auto_index).locations.get(locIndex+2);
+        location.setVariant("t_current<="+t2,automatas.get(Auto_index).parameters);
+        location.setFlow(tmp2,automatas.get(Auto_index).parameters);
+        transition=automatas.get(Auto_index).getTransitionBySourceAndTarget(locIndex+2,locIndex+3);
+        transition.setGuard("t=="+t2,automatas.get(Auto_index).parameters);
+
+        location=automatas.get(Auto_index).locations.get(locIndex+3);
+        location.setVariant("t_current<="+t3,automatas.get(Auto_index).parameters);
+        location.setFlow(tmp3,automatas.get(Auto_index).parameters);
+    }
+    private void setDoorlike(double[] time, double lastTime, int Auto_index, int locIndex, double[] theta_tar, double[] v_doorlike,double v_max) {
+        double t1=time[0]+lastTime;
+        double t2=time[1]+lastTime;
+        double t3=time[2]+lastTime;
+        String tmp1="x3'="+Double.toString(v_max)+"&amp;";
+        String tmp2="";
+        String tmp3="x3'="+Double.toString(v_max*(-1))+"&amp;";
+
+        for(int i=0;i<3;i++){
+            tmp2=tmp2+"x"+Integer.toString(i+1)+"'="+Double.toString(v_doorlike[i])+"&amp;";
         }
         Location location=automatas.get(Auto_index).locations.get(locIndex+1);
         location.setVariant("t_current<="+t1,automatas.get(Auto_index).parameters);
